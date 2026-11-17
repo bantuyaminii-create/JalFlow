@@ -1,0 +1,239 @@
+/* General styling */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: #183b4e;
+    background-color: #ffffff;
+}
+
+/* Navigation */
+.navbar {
+    background-color: #ffffff;
+    padding: 18px 0;
+}
+
+.navbar-brand {
+    font-size: 25px;
+    font-weight: bold;
+    color: #087e8b;
+}
+
+.nav-link {
+    color: #345565;
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    color: #087e8b;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #087e8b;
+    border-color: #087e8b;
+    border-radius: 8px;
+    padding: 10px 22px;
+}
+
+.btn-primary:hover {
+    background-color: #05636d;
+    border-color: #05636d;
+}
+
+/* Hero section */
+.hero {
+    background: linear-gradient(135deg, #e5f7f8, #d3edf5);
+    padding: 110px 0;
+}
+
+.hero-content {
+    max-width: 700px;
+}
+
+.eyebrow {
+    color: #087e8b;
+    font-weight: bold;
+    letter-spacing: 2px;
+    font-size: 13px;
+}
+
+.hero h1 {
+    font-size: clamp(38px, 6vw, 65px);
+    font-weight: 750;
+    line-height: 1.15;
+    margin: 20px 0;
+}
+
+.hero-description {
+    font-size: 18px;
+    line-height: 1.8;
+    color: #526b78;
+    margin-bottom: 30px;
+}
+
+/* Features */
+.features {
+    padding: 80px 0;
+}
+
+.features h2,
+.about h2 {
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.feature-card {
+    height: 100%;
+    padding: 30px 22px;
+    background-color: #f5fafb;
+    border: 1px solid #e2eff1;
+    border-radius: 14px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(0, 70, 80, 0.10);
+}
+
+.feature-icon {
+    font-size: 35px;
+    margin-bottom: 18px;
+}
+
+.feature-card h5 {
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.feature-card p {
+    color: #607783;
+    line-height: 1.6;
+}
+
+/* About section */
+.about {
+    background-color: #edf7f8;
+}
+
+.about p:last-child {
+    max-width: 700px;
+    margin: 20px auto 0;
+    line-height: 1.8;
+    color: #526b78;
+}
+
+/* Footer */
+footer {
+    background-color: #123b4a;
+    color: #ffffff;
+    padding: 35px 0;
+}
+
+footer p {
+    margin: 8px 0;
+    color: #d3e5e9;
+    font-size: 14px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .hero {
+        padding: 75px 0;
+    }
+
+    .hero-description {
+        font-size: 16px;
+    }
+
+    .feature-card {
+        padding: 25px 18px;
+    }
+}
+
+/* Login page */
+
+.login-section {
+    min-height: 85vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #e5f7f8, #d3edf5);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 35px rgba(0, 70, 80, 0.10);
+}
+
+.login-icon {
+    font-size: 45px;
+    margin-bottom: 15px;
+}
+
+.login-card h2 {
+    font-weight: bold;
+    color: #183b4e;
+}
+
+.login-card p {
+    color: #607783;
+}
+
+.login-card .form-control {
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.login-card .form-control:focus {
+    border-color: #087e8b;
+    box-shadow: 0 0 0 0.2rem rgba(8, 126, 139, 0.15);
+}
+
+/* Dashboard */
+
+.dashboard-section {
+    min-height: 85vh;
+    padding: 60px 0;
+    background-color: #f5fafb;
+}
+
+.dashboard-heading {
+    margin-bottom: 45px;
+}
+
+.dashboard-heading h1 {
+    font-weight: bold;
+    color: #183b4e;
+    margin: 15px 0;
+}
+
+.dashboard-card {
+    height: 100%;
+    padding: 30px;
+    background-color: white;
+    border: 1px solid #e2eff1;
+    border-radius: 14px;
+    box-shadow: 0 5px 18px rgba(0, 70, 80, 0.05);
+    transition: transform 0.3s;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+
+.dashboard-card h5 {
+    font-weight: bold;
+    color: #087e8b;
+    margin-bottom: 15px;
+}
+
+.dashboard-card p {
+    color: #607783;
+    line-height: 1.6;
+}

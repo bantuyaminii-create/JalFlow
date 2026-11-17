@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Incident Reports | JalFlow</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">💧 JalFlow</a>
+
+            <a href="/dashboard" class="btn btn-outline-primary">
+                Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <section class="dashboard-section">
+        <div class="container">
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info mt-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="dashboard-heading">
+                <p class="eyebrow">MANAGER WORKSPACE</p>
+                <h1>Incident Reports</h1>
+                <p>Review and monitor water-related incidents reported by residents and operators.</p>
+            </div>
+
+            <div class="mt-4">
+
+                {% if complaints %}
+
+                    {% for complaint in complaints %}
+
+                        <div class="dashboard-card mb-4">
+
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                                <h5>Incident #{{ complaint.id }}</h5>
+
+                                {% if complaint.status == "reported" %}
+                                    <span class="badge bg-warning text-dark">
+                                        Reported
+                                    </span>
+                                {% elif complaint.status == "verified" %}
+                                    <span class="badge bg-info text-dark">
+                                        Verified
+                                    </span>
+                                {% elif complaint.status == "assigned" %}
+                                    <span class="badge bg-primary">
+                                        Assigned
+                                    </span>
+                                {% elif complaint.status == "resolved" %}
+                                    <span class="badge bg-success">
+                                        Resolved
+                                    </span>
+                                {% elif complaint.status == "closed" %}
+                                    <span class="badge bg-secondary">
+                                        Closed
+                                    </span>
+                                {% endif %}
+                                {% if complaint.status == "reported" %}
+    <form method="POST"
+          action="{{ url_for('verify_complaint', complaint_id=complaint.id) }}">
+        <button type="submit" class="btn btn-success btn-sm">
+            ✓ Verify Complaint
+        </button>
+    </form>
+{% endif %}
+{% if complaint.status == "verified" %}
+    <form method="POST"
+          action="{{ url_for('assign_complaint', complaint_id=complaint.id) }}"
+          class="mt-2">
+
+        <div class="input-group">
+            <select name="maintenance_id" class="form-select" required>
+                <option value="">Select Maintenance Staff</option>
+
+                {% for staff in maintenance_staff %}
+                    <option value="{{ staff.id }}">
+                        {{ staff.name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-primary">
+                Assign Task
+            </button>
+        </div>
+    </form>
+{% endif %}
+{% if complaint.status == "resolved" %}
+
+    <form method="POST"
+          action="{{ url_for('close_complaint', complaint_id=complaint.id) }}"
+          class="mt-2">
+
+        <button type="submit" class="btn btn-secondary">
+            ✓ Close Complaint
+        </button>
+
+    </form>
+
+{% endif %}
+
+                            </div>
+
+                            <hr>
+
+                            <p>
+                                <strong>Reported By:</strong>
+                                {{ complaint.resident_name }}
+                                <span class="badge bg-info text-dark">
+                                    {{ complaint.reporter_role | title }}
+                                </span>
+                            </p>
+
+                            <p>
+                                <strong>Reporter Email:</strong>
+                                {{ complaint.resident_email }}
+                            </p>
+
+                            <p>
+                                <strong>Zone:</strong>
+                                {{ complaint.zone_name }}
+                            </p>
+
+                            <div class="mb-3">
+                                <strong>Valve Details:</strong>
+
+                                {% if complaint.valve_code %}
+                                    <p class="mb-1">
+                                        <strong>Valve Code:</strong>
+                                        {{ complaint.valve_code }}
+                                    </p>
+
+                                    {% if complaint.valve_location %}
+                                        <p class="mb-1">
+                                            <strong>Location:</strong>
+                                            {{ complaint.valve_location }}
+                                        </p>
+                                    {% endif %}
+
+                                    {% if complaint.valve_type %}
+                                        <p class="mb-1">
+                                            <strong>Valve Type:</strong>
+                                            {{ complaint.valve_type }}
+                                        </p>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="text-muted mb-0">
+                                        No specific valve reported.
+                                    </p>
+                                {% endif %}
+                            </div>
+
+                            <p>
+                                <strong>Incident Type:</strong>
+                                {{ complaint.incident_type }}
+                            </p>
+
+                            <p>
+                                <strong>Description:</strong>
+                                {{ complaint.description }}
+                            </p>
+
+                            <p>
+                                <strong>Priority:</strong>
+
+                                {% if complaint.severity == "low" %}
+                                    <span class="badge bg-success">Low</span>
+                                {% elif complaint.severity == "medium" %}
+                                    <span class="badge bg-info text-dark">Medium</span>
+                                {% elif complaint.severity == "high" %}
+                                    <span class="badge bg-warning text-dark">High</span>
+                                {% elif complaint.severity == "critical" %}
+                                    <span class="badge bg-danger">Critical</span>
+                                {% endif %}
+                            </p>
+
+                            <p class="mb-0">
+                                <strong>Submitted:</strong>
+                                {{ complaint.created_at }}
+                            </p>
+
+                        </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="dashboard-card text-center">
+                        <h5>No Complaints Found</h5>
+                        <p>There are currently no resident complaints.</p>
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+    </section>
+
+</body>
+</html>

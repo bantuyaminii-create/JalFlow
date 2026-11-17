@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Operation Logs | JalFlow</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <div class="container py-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>My Operation Logs</h2>
+
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                Back to Dashboard
+            </a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Operation Log Filters -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+
+                <h5 class="card-title mb-3">Filter Operation Logs</h5>
+
+                <form method="GET" action="{{ url_for('operator_operation_logs') }}">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label for="date" class="form-label">Schedule Date</label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="date"
+                                name="date"
+                                value="{{ selected_date }}"
+                            >
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="zone_id" class="form-label">Zone</label>
+                            <select class="form-select" id="zone_id" name="zone_id">
+                                <option value="">All Zones</option>
+
+                                {% for zone in zones %}
+                                    <option
+                                        value="{{ zone.id }}"
+                                        {% if selected_zone == zone.id|string %}selected{% endif %}
+                                    >
+                                        {{ zone.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="action" class="form-label">Action</label>
+                            <select class="form-select" id="action" name="action">
+                                <option value="">All Actions</option>
+                                <option value="started" {% if selected_action == "started" %}selected{% endif %}>
+                                    Schedule Started
+                                </option>
+                                <option value="completed" {% if selected_action == "completed" %}selected{% endif %}>
+                                    Schedule Completed
+                                </option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            Apply Filters
+                        </button>
+
+                        <a href="{{ url_for('operator_operation_logs') }}" class="btn btn-outline-secondary">
+                            Clear Filters
+                        </a>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        {% if operation_logs %}
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover align-middle">
+
+                    <thead class="table-primary">
+                        <tr>
+                            <th>ID</th>
+                            <th>Zone</th>
+                            <th>Schedule Date</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Action</th>
+                            <th>Recorded At</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for log in operation_logs %}
+
+                            <tr>
+                                <td>{{ log.id }}</td>
+                                <td>{{ log.zone_name }}</td>
+                                <td>{{ log.scheduled_date }}</td>
+                                <td>{{ log.start_time }}</td>
+                                <td>{{ log.end_time }}</td>
+
+                                <td>
+                                    {% if "started" in (log.notes or "")|lower %}
+                                        <span class="badge bg-primary">Schedule Started</span>
+                                    {% elif "completed" in (log.notes or "")|lower %}
+                                        <span class="badge bg-success">Schedule Completed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            {{ log.action|replace("_", " ")|title }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td>{{ log.recorded_at }}</td>
+                                <td>{{ log.notes or "—" }}</td>
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        {% else %}
+
+            <div class="alert alert-info">
+                No operation logs match the selected filters.
+                Try changing or clearing your filters.
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

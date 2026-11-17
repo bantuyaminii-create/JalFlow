@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Assigned Tasks | JalFlow</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <div class="container py-5">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <h2>Maintenance Tasks</h2>
+                <p class="text-muted">
+                    Welcome, {{ session["name"] }}. Here are your assigned repair tasks.
+                </p>
+            </div>
+
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                Back to Dashboard
+            </a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if tasks %}
+
+            {% for task in tasks %}
+
+                <div class="dashboard-card mb-4">
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                        <h5>Task #{{ task.task_id }}</h5>
+
+                        <span class="badge bg-primary">
+                            {{ task.task_status|capitalize }}
+                        </span>
+
+                    </div>
+
+                    <hr>
+
+                    <p><strong>Complaint:</strong> #{{ task.complaint_id }}</p>
+
+                    <p><strong>Issue:</strong> {{ task.incident_type }}</p>
+
+                    <p><strong>Description:</strong> {{ task.description }}</p>
+
+                    <p><strong>Priority:</strong> {{ task.severity|capitalize }}</p>
+
+                    <p><strong>Zone:</strong> {{ task.zone_name }}</p>
+
+                    {% if task.valve_code %}
+                        <p><strong>Valve Code:</strong> {{ task.valve_code }}</p>
+
+                        {% if task.valve_location %}
+                            <p><strong>Valve Location:</strong> {{ task.valve_location }}</p>
+                        {% endif %}
+
+                        {% if task.valve_type %}
+                            <p><strong>Valve Type:</strong> {{ task.valve_type }}</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted"><strong>Valve:</strong> No specific valve reported.</p>
+                    {% endif %}
+
+                    <p><strong>Reported by:</strong> {{ task.resident_name }}</p>
+
+                    <p><strong>Assigned on:</strong> {{ task.assigned_at }}</p>
+
+                    {% if task.inspection_notes %}
+                        <p><strong>Inspection Notes:</strong> {{ task.inspection_notes }}</p>
+                    {% endif %}
+
+                    {% if task.repair_notes %}
+                        <p><strong>Repair Notes:</strong> {{ task.repair_notes }}</p>
+                    {% endif %}
+
+                    {% if task.completion_notes %}
+                        <p><strong>Completion Notes:</strong> {{ task.completion_notes }}</p>
+                    {% endif %}
+                    {% if task.task_status == "assigned" %}
+
+    <form method="POST"
+          action="{{ url_for('update_maintenance_task', task_id=task.task_id) }}">
+
+        <input type="hidden" name="status" value="inspecting">
+
+        <div class="mb-3">
+            <label class="form-label">Inspection Notes</label>
+            <textarea name="notes"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Describe your inspection observations..."
+                      required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-info">
+            Start Inspection
+        </button>
+    </form>
+
+{% elif task.task_status == "inspecting" %}
+
+    <form method="POST"
+          action="{{ url_for('update_maintenance_task', task_id=task.task_id) }}">
+
+        <input type="hidden" name="status" value="repairing">
+
+        <div class="mb-3">
+            <label class="form-label">Repair Notes</label>
+            <textarea name="notes"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Describe the repair work being performed..."
+                      required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Start Repair
+        </button>
+    </form>
+
+{% elif task.task_status == "repairing" %}
+
+    <form method="POST"
+          action="{{ url_for('update_maintenance_task', task_id=task.task_id) }}">
+
+        <input type="hidden" name="status" value="completed">
+
+        <div class="mb-3">
+            <label class="form-label">Completion Notes</label>
+            <textarea name="notes"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Describe the completed repair..."
+                      required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success">
+            Complete Repair
+        </button>
+    </form>
+
+{% elif task.task_status == "completed" %}
+
+    <div class="alert alert-success mt-3">
+        Repair completed successfully!
+    </div>
+
+{% endif %}
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="dashboard-card text-center py-5">
+                <h5>No Assigned Tasks</h5>
+                <p class="text-muted">
+                    You don't have any maintenance tasks assigned yet.
+                </p>
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

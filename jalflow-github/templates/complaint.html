@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Raise a Complaint | JalFlow</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">💧 JalFlow</a>
+
+            <a href="/dashboard" class="btn btn-outline-primary">
+                Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <section class="dashboard-section">
+        <div class="container">
+
+            <div class="dashboard-heading">
+                <p class="eyebrow">{{ role|upper }} SERVICES</p>
+                <h1>Report an Incident</h1>
+                <p>Tell us about a water supply problem in your area.</p>
+            </div>
+
+            <div class="dashboard-card mt-4">
+
+                <form action="/complaints/new" method="POST">
+
+                    <div class="mb-3">
+                        <label for="zone_id" class="form-label">
+                            Water Distribution Zone
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="zone_id"
+                            name="zone_id"
+                            required
+                        >
+                            <option value="">Select zone</option>
+
+                            {% for zone in zones %}
+                                <option
+                                    value="{{ zone.id }}"
+                                    {% if selected_zone_id is not none and zone.id == selected_zone_id %}selected{% endif %}
+                                >
+                                    {{ zone.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+
+                        {% if role == "resident" %}
+                            <small class="text-muted">
+                                Select the zone where you are experiencing the water problem.
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="valve_id" class="form-label">
+                            Valve (Optional)
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="valve_id"
+                            name="valve_id"
+                        >
+                            <option value="">Select valve (if known)</option>
+
+                            {% for valve in valves %}
+                                <option
+                                    value="{{ valve.id }}"
+                                    data-zone-id="{{ valve.zone_id }}"
+                                >
+                                    {{ valve.valve_code }}
+                                    {% if valve.location %}
+                                        - {{ valve.location }}
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+
+                        <small class="text-muted">
+                            Select a valve only if you know which valve is related to the problem.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="incident_type" class="form-label">
+                            Complaint Type
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="incident_type"
+                            name="incident_type"
+                            required
+                        >
+                            <option value="">Select complaint type</option>
+                            <option value="Water Shortage">Water Shortage</option>
+                            <option value="Water Leakage">Water Leakage</option>
+                            <option value="Water Quality">Water Quality</option>
+                            <option value="Supply Disruption">Supply Disruption</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            Complaint Description
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            id="description"
+                            name="description"
+                            rows="5"
+                            placeholder="Describe the water-related problem..."
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="severity" class="form-label">
+                            Priority
+                        </label>
+
+                        <select
+                            class="form-select"
+                            id="severity"
+                            name="severity"
+                            required
+                        >
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Submit Complaint
+                    </button>
+
+                    <a href="/dashboard" class="btn btn-outline-secondary ms-2">
+                        Cancel
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+    </section>
+
+
+<script>
+    const zoneSelect = document.getElementById("zone_id");
+    const valveSelect = document.getElementById("valve_id");
+
+    function updateValves() {
+        const selectedZone = zoneSelect.value;
+
+        valveSelect.value = "";
+
+        Array.from(valveSelect.options).forEach(option => {
+            if (!option.dataset.zoneId) {
+                option.hidden = false;
+                option.disabled = false;
+                return;
+            }
+
+            const belongsToZone = option.dataset.zoneId === selectedZone;
+
+            option.hidden = !belongsToZone;
+            option.disabled = !belongsToZone;
+        });
+    }
+
+    zoneSelect.addEventListener("change", updateValves);
+
+    updateValves();
+</script>
+\n</body>
+</html>

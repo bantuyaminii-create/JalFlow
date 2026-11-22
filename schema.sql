@@ -12,6 +12,7 @@ CREATE TABLE users (
     ),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active INTEGER NOT NULL DEFAULT 1
+        CHECK (is_active IN (0, 1))
 );
 
 -- 2. Zones table
@@ -116,6 +117,10 @@ CREATE TABLE maintenance_tasks (
     FOREIGN KEY (assigned_to) REFERENCES users(id),
     FOREIGN KEY (assigned_by) REFERENCES users(id)
 );
+
+-- Prevent multiple maintenance tasks for the same complaint
+CREATE UNIQUE INDEX IF NOT EXISTS idx_maintenance_tasks_incident_id
+ON maintenance_tasks(incident_id);
 
 -- 8. Activity logs table
 CREATE TABLE activity_logs (

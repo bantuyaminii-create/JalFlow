@@ -1,4 +1,11 @@
+# AI Assistance Acknowledgement:
+# ChatGPT (OpenAI) was used during development for programming explanations,
+# debugging assistance, and suggestions involving Flask, SQLite, validation,
+# and application functionality. Suggestions were reviewed and adapted
+# during development.
+
 import os
+import re
 import sqlite3
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
@@ -105,8 +112,6 @@ def log_activity(action, entity_type, entity_id=None, details=None):
             details
         )
     )
-
-    db.commit()
 
 
 # Home page
@@ -233,6 +238,8 @@ def login():
 
     if request.method == "POST":
 
+        session.clear()
+
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
@@ -252,8 +259,6 @@ def login():
         if user["is_active"] == 0:
             flash("Your account is inactive. Please contact the Manager.")
             return redirect("/login")
-
-        session.clear()
 
         session["user_id"] = user["id"]
         session["name"] = user["name"]
@@ -275,6 +280,16 @@ def dashboard():
         return redirect("/login")
 
     db = get_db()
+
+    active_user = db.execute(
+        "SELECT is_active FROM users WHERE id = ?",
+        (session["user_id"],)
+    ).fetchone()
+
+    if active_user is None or active_user["is_active"] != 1:
+        session.clear()
+        flash("Your account is inactive or unavailable. Please log in again.")
+        return redirect("/login")
 
     resident_profile = None
     resident_schedules = []
@@ -376,6 +391,14 @@ def zones():
             flash("Zone name is required.")
             return redirect("/zones")
 
+        if len(name) > 100:
+            flash("Zone name cannot exceed 100 characters.")
+            return redirect("/zones")
+
+        if len(description) > 1000:
+            flash("Zone description cannot exceed 1000 characters.")
+            return redirect("/zones")
+
         duplicate = db.execute(
             """
             SELECT id FROM zones
@@ -442,6 +465,14 @@ def edit_zone(zone_id):
 
         if not name:
             flash("Zone name is required.")
+            return redirect(f"/zones/{zone_id}/edit")
+
+        if len(name) > 100:
+            flash("Zone name cannot exceed 100 characters.")
+            return redirect(f"/zones/{zone_id}/edit")
+
+        if len(description) > 1000:
+            flash("Zone description cannot exceed 1000 characters.")
             return redirect(f"/zones/{zone_id}/edit")
 
         duplicate = db.execute(
@@ -545,14 +576,14 @@ def valves():
                 )
             )
 
-            db.commit()
-
             log_activity(
                 "valve_created",
                 "valve",
                 cursor.lastrowid,
                 f"Created valve {valve_code} in zone ID {zone_id}."
             )
+
+            db.commit()
 
             flash("Valve added successfully!")
 
@@ -655,6 +686,27 @@ def edit_valve(valve_id):
             flash("This valve code already exists in the selected zone.")
             return redirect(f"/valves/{valve_id}/edit")
 
+        # Preserve historical records by preventing referenced valves
+        # from being moved to another zone.
+        if int(zone_id) != valve["zone_id"]:
+            has_history = db.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM incidents WHERE valve_id = ?
+                    UNION ALL
+                    SELECT 1 FROM operation_logs WHERE valve_id = ?
+                ) AS has_history
+                """,
+                (valve_id, valve_id)
+            ).fetchone()["has_history"]
+
+            if has_history:
+                flash(
+                    "This valve cannot be moved because it has "
+                    "existing complaint or operation history."
+                )
+                return redirect(f"/valves/{valve_id}/edit")
+
         try:
             db.execute(
                 """
@@ -678,14 +730,14 @@ def edit_valve(valve_id):
                 )
             )
 
-            db.commit()
-
             log_activity(
                 "valve_updated",
                 "valve",
                 valve_id,
                 f"Updated valve {valve_code}; status: {status}."
             )
+
+            db.commit()
 
             flash("Valve updated successfully!")
 
@@ -755,22 +807,10 @@ def new_complaint():
     if role == "resident":
         selected_zone_id = resident["zone_id"]
 
-        requested_zone = request.args.get("zone_id", "").strip()
-
-        if requested_zone:
-            try:
-                requested_zone_id = int(requested_zone)
-            except ValueError:
-                requested_zone_id = None
-
-            if requested_zone_id is not None:
-                valid_zone = db.execute(
-                    "SELECT id FROM zones WHERE id = ?",
-                    (requested_zone_id,)
-                ).fetchone()
-
-                if valid_zone:
-                    selected_zone_id = requested_zone_id
+        zones = db.execute(
+            "SELECT id, name FROM zones WHERE id = ?",
+            (selected_zone_id,)
+        ).fetchall()
 
     if request.method == "POST":
 
@@ -815,6 +855,10 @@ def new_complaint():
 
         if zone is None:
             flash("Please select a valid water distribution zone.")
+            return redirect("/complaints/new")
+
+        if role == "resident" and zone_id != resident["zone_id"]:
+            flash("You can report incidents only for your registered zone.")
             return redirect("/complaints/new")
 
         valve_id = None
@@ -936,6 +980,7 @@ def my_complaints():
             ON incidents.id = maintenance_tasks.incident_id
         WHERE incidents.reported_by = ?
         ORDER BY incidents.created_at DESC
+        LIMIT 100
         """,
         (session["user_id"],)
     ).fetchall()
@@ -990,6 +1035,7 @@ def manager_complaints():
     SELECT id, name
     FROM users
     WHERE role = 'maintenance'
+      AND is_active = 1
     ORDER BY name
     """
 ).fetchall()
@@ -1013,6 +1059,20 @@ def maintenance_tasks():
         return redirect("/dashboard")
 
     db = get_db()
+
+    active_user = db.execute(
+        """
+        SELECT is_active
+        FROM users
+        WHERE id = ? AND role = 'maintenance'
+        """,
+        (session["user_id"],)
+    ).fetchone()
+
+    if active_user is None or not active_user["is_active"]:
+        session.clear()
+        flash("Your account is inactive. Please contact the manager.")
+        return redirect("/login")
 
     tasks = db.execute(
         """
@@ -1065,8 +1125,26 @@ def update_maintenance_task(task_id):
 
     db = get_db()
 
+    active_user = db.execute(
+        """
+        SELECT is_active
+        FROM users
+        WHERE id = ? AND role = 'maintenance'
+        """,
+        (session["user_id"],)
+    ).fetchone()
+
+    if active_user is None or not active_user["is_active"]:
+        session.clear()
+        flash("Your account is inactive. Please contact the manager.")
+        return redirect("/login")
+
     new_status = request.form.get("status", "").strip()
     notes = request.form.get("notes", "").strip()
+
+    if len(notes) > 1000:
+        flash("Notes cannot exceed 1000 characters.")
+        return redirect("/maintenance/tasks")
 
     allowed_transitions = {
         "assigned": "inspecting",
@@ -1148,14 +1226,14 @@ def update_maintenance_task(task_id):
             (task_id,)
         )
 
-    db.commit()
-
     log_activity(
         "maintenance_task_status_changed",
         "maintenance_task",
         task_id,
         f"Status changed from {task['status']} to {new_status}."
     )
+
+    db.commit()
 
     flash("Maintenance task updated successfully!")
     return redirect("/maintenance/tasks")
@@ -1190,25 +1268,30 @@ def verify_complaint(complaint_id):
         flash("This complaint cannot be verified.")
 
     else:
-        db.execute(
+        cursor = db.execute(
             """
             UPDATE incidents
             SET status = 'verified'
             WHERE id = ?
+              AND status = 'reported'
             """,
             (complaint_id,)
         )
 
-        db.commit()
+        if cursor.rowcount != 1:
+            db.rollback()
+            flash("Complaint could not be verified. Please refresh and try again.")
+        else:
+            log_activity(
+                "complaint_verified",
+                "incident",
+                complaint_id,
+                "Manager verified resident complaint."
+            )
 
-        log_activity(
-            "complaint_verified",
-            "incident",
-            complaint_id,
-            "Manager verified resident complaint."
-        )
+            db.commit()
 
-        flash("Complaint verified successfully!")
+            flash("Complaint verified successfully!")
 
     return redirect("/manager/complaints")
 
@@ -1237,7 +1320,9 @@ def assign_complaint(complaint_id):
     maintenance_user = db.execute(
         """
         SELECT id FROM users
-        WHERE id = ? AND role = 'maintenance'
+        WHERE id = ?
+          AND role = 'maintenance'
+          AND is_active = 1
         """,
         (maintenance_id,)
     ).fetchone()
@@ -1292,14 +1377,14 @@ def assign_complaint(complaint_id):
                 (complaint_id,)
             )
 
-            db.commit()
-
             log_activity(
                 "complaint_assigned",
                 "incident",
                 complaint_id,
                 f"Assigned to maintenance staff user ID {maintenance_id}."
             )
+
+            db.commit()
 
             flash("Complaint assigned to maintenance staff successfully!")
 
@@ -1334,26 +1419,31 @@ def close_complaint(complaint_id):
         flash("Only resolved complaints can be closed.")
 
     else:
-        db.execute(
+        cursor = db.execute(
             """
             UPDATE incidents
             SET status = 'closed',
                 closed_at = CURRENT_TIMESTAMP
             WHERE id = ?
+              AND status = 'resolved'
             """,
             (complaint_id,)
         )
 
-        db.commit()
+        if cursor.rowcount != 1:
+            db.rollback()
+            flash("Complaint could not be closed. Please refresh and try again.")
+        else:
+            log_activity(
+                "complaint_closed",
+                "incident",
+                complaint_id,
+                "Manager closed the resolved complaint."
+            )
 
-        log_activity(
-            "complaint_closed",
-            "incident",
-            complaint_id,
-            "Manager closed the resolved complaint."
-        )
+            db.commit()
 
-        flash("Complaint closed successfully!")
+            flash("Complaint closed successfully!")
 
     return redirect("/manager/complaints")
 
@@ -1423,7 +1513,11 @@ def manager_activity_logs():
 
     if selected_date:
         try:
-            datetime.strptime(selected_date, "%Y-%m-%d")
+            parsed_date = datetime.strptime(selected_date, "%Y-%m-%d")
+
+            if parsed_date.strftime("%Y-%m-%d") != selected_date:
+                raise ValueError
+
         except ValueError:
             flash("Please select a valid date.")
             selected_date = ""
@@ -1491,6 +1585,21 @@ def manager_employees():
 
         if not name or not email or not password:
             flash("Please complete all required fields.")
+            return redirect(url_for("manager_employees"))
+
+        if len(name) < 2 or len(name) > 100:
+            flash("Employee name must be between 2 and 100 characters.")
+            return redirect(url_for("manager_employees"))
+
+        if (
+            len(email) > 254
+            or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email)
+        ):
+            flash("Please enter a valid email address (maximum 254 characters).")
+            return redirect(url_for("manager_employees"))
+
+        if len(password) > 128:
+            flash("Password cannot exceed 128 characters.")
             return redirect(url_for("manager_employees"))
 
         if role not in ("operator", "maintenance"):
@@ -1600,17 +1709,21 @@ def manager_employee_status(employee_id):
         flash("Employee account already has that status.")
         return redirect(url_for("manager_employees"))
 
-    db.execute(
+    cursor = db.execute(
         """
         UPDATE users
         SET is_active = ?
         WHERE id = ?
           AND role IN ('operator', 'maintenance')
+          AND is_active = ?
         """,
-        (new_status, employee_id)
+        (new_status, employee_id, employee["is_active"])
     )
 
-    db.commit()
+    if cursor.rowcount != 1:
+        db.rollback()
+        flash("Employee status could not be updated. Please refresh and try again.")
+        return redirect(url_for("manager_employees"))
 
     log_activity(
         "employee_" + action + "d" if action == "activate"
@@ -1619,6 +1732,8 @@ def manager_employee_status(employee_id):
         employee_id,
         f"{action.title()}d account for {employee['name']}"
     )
+
+    db.commit()
 
     flash(
         "Employee account activated successfully!"
@@ -1660,8 +1775,15 @@ def manager_cancelled_schedules():
         LEFT JOIN users
             ON schedules.assigned_operator_id = users.id
         LEFT JOIN operation_logs
-            ON operation_logs.schedule_id = schedules.id
-            AND operation_logs.action = 'observation'
+            ON operation_logs.id = (
+                SELECT latest_log.id
+                FROM operation_logs AS latest_log
+                WHERE latest_log.schedule_id = schedules.id
+                    AND latest_log.action = 'observation'
+                    AND latest_log.notes LIKE 'Unable to complete scheduled supply:%'
+                ORDER BY latest_log.recorded_at DESC, latest_log.id DESC
+                LIMIT 1
+            )
         WHERE schedules.status = 'cancelled'
         ORDER BY operation_logs.recorded_at DESC, schedules.id DESC
         """
@@ -1696,6 +1818,10 @@ def manage_schedules():
         end_time = request.form.get("end_time", "").strip()
         notes = request.form.get("notes", "").strip()
 
+        if len(notes) > 1000:
+            flash("Schedule instructions cannot exceed 1000 characters.")
+            return redirect("/schedules")
+
         if not all([zone_id, operator_id, scheduled_date,
                     start_time, end_time]):
             flash("Please complete all required fields.")
@@ -1716,7 +1842,9 @@ def manage_schedules():
         operator = db.execute(
             """
             SELECT id FROM users
-            WHERE id = ? AND role = 'operator'
+            WHERE id = ?
+              AND role = 'operator'
+              AND is_active = 1
             """,
             (operator_id,)
         ).fetchone()
@@ -1735,7 +1863,23 @@ def manage_schedules():
             flash("You cannot create a schedule for a past date.")
             return redirect("/schedules")
 
-        if end_time <= start_time:
+        try:
+            parsed_start_time = time.fromisoformat(start_time)
+            parsed_end_time = time.fromisoformat(end_time)
+        except ValueError:
+            flash("Please enter valid start and end times.")
+            return redirect("/schedules")
+
+        if (
+            len(start_time) != 5
+            or len(end_time) != 5
+            or parsed_start_time.isoformat(timespec="minutes") != start_time
+            or parsed_end_time.isoformat(timespec="minutes") != end_time
+        ):
+            flash("Please enter times in HH:MM format.")
+            return redirect("/schedules")
+
+        if parsed_end_time <= parsed_start_time:
             flash("End time must be later than start time.")
             return redirect("/schedules")
 
@@ -1745,7 +1889,7 @@ def manage_schedules():
             FROM schedules
             WHERE assigned_operator_id = ?
               AND scheduled_date = ?
-              AND status != 'completed'
+              AND status IN ('planned', 'in_progress')
               AND start_time < ?
               AND end_time > ?
             LIMIT 1
@@ -1788,7 +1932,6 @@ def manage_schedules():
         )
 
         schedule_id = cursor.lastrowid
-        db.commit()
 
         log_activity(
             "schedule_created",
@@ -1799,6 +1942,8 @@ def manage_schedules():
             f"Date: {scheduled_date}, "
             f"Time: {start_time} - {end_time}"
         )
+
+        db.commit()
 
         flash("Water supply schedule created successfully!")
         return redirect("/schedules")
@@ -1812,6 +1957,7 @@ def manage_schedules():
         SELECT id, name
         FROM users
         WHERE role = 'operator'
+          AND is_active = 1
         ORDER BY name
         """
     ).fetchall()
@@ -1995,26 +2141,45 @@ def update_schedule_status(schedule_id):
     ).isoformat(timespec="seconds")
 
     if new_status == "in_progress":
-        db.execute(
+        cursor = db.execute(
             """
             UPDATE schedules
             SET status = ?, actual_start_at = ?
             WHERE id = ?
             AND assigned_operator_id = ?
+            AND status = ?
             """,
-            (new_status, event_time, schedule_id, session["user_id"])
+            (
+                new_status,
+                event_time,
+                schedule_id,
+                session["user_id"],
+                current_status
+            )
         )
 
     else:
-        db.execute(
+        cursor = db.execute(
             """
             UPDATE schedules
             SET status = ?, actual_completed_at = ?
             WHERE id = ?
             AND assigned_operator_id = ?
+            AND status = ?
             """,
-            (new_status, event_time, schedule_id, session["user_id"])
+            (
+                new_status,
+                event_time,
+                schedule_id,
+                session["user_id"],
+                current_status
+            )
         )
+
+    if cursor.rowcount != 1:
+        db.rollback()
+        flash("Schedule could not be updated. Please refresh and try again.")
+        return redirect("/operator/schedules")
 
     operation_description = (
         "Water supply schedule started."
@@ -2039,14 +2204,14 @@ def update_schedule_status(schedule_id):
         )
     )
 
-    db.commit()
-
     log_activity(
         "schedule_status_changed",
         "schedule",
         schedule_id,
         f"Status changed from {current_status} to {new_status}"
     )
+
+    db.commit()
 
     flash("Schedule status updated successfully!")
     return redirect("/operator/schedules")
@@ -2110,7 +2275,7 @@ def report_schedule_failure(schedule_id):
         flash("The reason must be 1000 characters or fewer.")
         return redirect("/operator/schedules")
 
-    db.execute(
+    cursor = db.execute(
         """
         UPDATE schedules
         SET status = 'cancelled'
@@ -2120,6 +2285,11 @@ def report_schedule_failure(schedule_id):
         """,
         (schedule_id, session["user_id"])
     )
+
+    if cursor.rowcount != 1:
+        db.rollback()
+        flash("Schedule could not be cancelled. Please refresh and try again.")
+        return redirect("/operator/schedules")
 
     operation_note = f"Unable to complete scheduled supply: {reason}"
 
@@ -2140,14 +2310,14 @@ def report_schedule_failure(schedule_id):
         )
     )
 
-    db.commit()
-
     log_activity(
         "schedule_cancelled",
         "schedule",
         schedule_id,
         f"Operator reported unsuccessful water supply. Reason: {reason}"
     )
+
+    db.commit()
 
     flash("Reason submitted. The schedule status is now Cancelled.")
     return redirect("/operator/schedules")
@@ -2177,11 +2347,16 @@ def operator_operation_logs():
 
     if selected_date:
         try:
-            datetime.strptime(selected_date, "%Y-%m-%d")
+            parsed_date = datetime.strptime(selected_date, "%Y-%m-%d")
+
+            if parsed_date.strftime("%Y-%m-%d") != selected_date:
+                raise ValueError
+
             conditions.append("schedules.scheduled_date = ?")
             parameters.append(selected_date)
+
         except ValueError:
-            flash("Invalid date filter.")
+            flash("Invalid date filter. Please use YYYY-MM-DD.")
             selected_date = ""
 
     zones = db.execute(
@@ -2234,6 +2409,7 @@ def operator_operation_logs():
         + " AND ".join(conditions)
         + """
         ORDER BY operation_logs.recorded_at DESC
+        LIMIT 100
         """,
         parameters
     ).fetchall()

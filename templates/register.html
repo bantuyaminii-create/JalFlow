@@ -69,7 +69,7 @@
                             Water Distribution Zone
                         </label>
 
-                        <select class="form-select" id="zone_id" name="zone_id">
+                        <select class="form-select" id="zone_id" name="zone_id" required>
                             <option value="">Select your zone</option>
 
                             {% for zone in zones %}
@@ -89,6 +89,7 @@
                                   id="address"
                                   name="address"
                                   rows="3"
+                                  required
                                   placeholder="Enter your residential address"></textarea>
                     </div>
 

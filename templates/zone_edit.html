@@ -56,6 +56,7 @@
                                     id="name"
                                     name="name"
                                     value="{{ zone.name }}"
+                                    maxlength="100"
                                     required
                                 >
                             </div>
@@ -70,6 +71,7 @@
                                     id="description"
                                     name="description"
                                     rows="4"
+                                    maxlength="1000"
                                 >{{ zone.description or "" }}</textarea>
                             </div>
 

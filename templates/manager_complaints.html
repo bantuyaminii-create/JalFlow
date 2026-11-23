@@ -88,21 +88,28 @@
           action="{{ url_for('assign_complaint', complaint_id=complaint.id) }}"
           class="mt-2">
 
-        <div class="input-group">
-            <select name="maintenance_id" class="form-select" required>
-                <option value="">Select Maintenance Staff</option>
+        {% if maintenance_staff %}
+            <div class="input-group">
+                <select name="maintenance_id" class="form-select" required>
+                    <option value="">Select Maintenance Staff</option>
 
-                {% for staff in maintenance_staff %}
-                    <option value="{{ staff.id }}">
-                        {{ staff.name }}
-                    </option>
-                {% endfor %}
-            </select>
+                    {% for staff in maintenance_staff %}
+                        <option value="{{ staff.id }}">
+                            {{ staff.name }}
+                        </option>
+                    {% endfor %}
+                </select>
 
-            <button type="submit" class="btn btn-primary">
-                Assign Task
-            </button>
-        </div>
+                <button type="submit" class="btn btn-primary">
+                    Assign Task
+                </button>
+            </div>
+        {% else %}
+            <div class="alert alert-warning mb-0">
+                No active maintenance staff are available.
+                Activate a maintenance employee before assigning this complaint.
+            </div>
+        {% endif %}
     </form>
 {% endif %}
 {% if complaint.status == "resolved" %}

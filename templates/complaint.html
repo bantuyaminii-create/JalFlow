@@ -37,32 +37,45 @@
                 <form action="/complaints/new" method="POST">
 
                     <div class="mb-3">
-                        <label for="zone_id" class="form-label">
+                        <label for="{{ 'zone_display' if role == 'resident' else 'zone_id' }}" class="form-label">
                             Water Distribution Zone
                         </label>
 
-                        <select
-                            class="form-select"
-                            id="zone_id"
-                            name="zone_id"
-                            required
-                        >
-                            <option value="">Select zone</option>
-
-                            {% for zone in zones %}
-                                <option
-                                    value="{{ zone.id }}"
-                                    {% if selected_zone_id is not none and zone.id == selected_zone_id %}selected{% endif %}
-                                >
-                                    {{ zone.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-
                         {% if role == "resident" %}
+                            {% for zone in zones %}
+                                <input
+                                    type="hidden"
+                                    id="zone_id"
+                                    name="zone_id"
+                                    value="{{ zone.id }}"
+                                >
+                                <input
+                                    type="text"
+                                    id="zone_display"
+                                    class="form-control"
+                                    value="{{ zone.name }}"
+                                    readonly
+                                >
+                            {% endfor %}
+
                             <small class="text-muted">
-                                Select the zone where you are experiencing the water problem.
+                                Complaints can only be reported for your registered zone.
                             </small>
+                        {% else %}
+                            <select
+                                class="form-select"
+                                id="zone_id"
+                                name="zone_id"
+                                required
+                            >
+                                <option value="">Select zone</option>
+
+                                {% for zone in zones %}
+                                    <option value="{{ zone.id }}">
+                                        {{ zone.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
                         {% endif %}
                     </div>
 
@@ -169,7 +182,10 @@
     const zoneSelect = document.getElementById("zone_id");
     const valveSelect = document.getElementById("valve_id");
 
-    function updateValves() {
+    if (!zoneSelect || !valveSelect) {
+        console.warn("Zone or valve selector is unavailable.");
+    } else {
+        function updateValves() {
         const selectedZone = zoneSelect.value;
 
         valveSelect.value = "";
@@ -188,9 +204,9 @@
         });
     }
 
-    zoneSelect.addEventListener("change", updateValves);
-
-    updateValves();
+        zoneSelect.addEventListener("change", updateValves);
+        updateValves();
+    }
 </script>
 \n</body>
 </html>
